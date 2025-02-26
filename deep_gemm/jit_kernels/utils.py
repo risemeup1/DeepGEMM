@@ -1,4 +1,4 @@
-import torch
+import paddle
 
 _num_sms = None
 
@@ -25,7 +25,7 @@ def get_num_sms() -> int:
     """
     global _num_sms
     if _num_sms is None:
-        _num_sms = torch.cuda.get_device_properties(device='cuda').multi_processor_count
+    	_num_sms = paddle.device.cuda.get_device_properties().multi_processor_count
     return _num_sms
 
 
@@ -74,7 +74,7 @@ def get_tma_aligned_size(x: int, element_size: int) -> int:
     return cell_div(x, alignment) * alignment
 
 
-def get_col_major_tma_aligned_tensor(x: torch.Tensor) -> torch.Tensor:
+def get_col_major_tma_aligned_tensor(x: paddle.tensor) -> paddle.tensor:
     """
     Returns TMA-aligned transposed format of the input tensor. `torch.transpose` will be called if necessary.
     If the input tensor is already column-major layout and 16-byte aligned along the M axis
@@ -96,10 +96,12 @@ def get_col_major_tma_aligned_tensor(x: torch.Tensor) -> torch.Tensor:
     aligned_m = get_tma_aligned_size(m, x.element_size())
 
     # The last kernel gives a column-major TMA aligned layout
-    if x.stride(0) == aligned_m * n and x.stride(1) == 1 and x.stride(2) == aligned_m:
-        return x.squeeze(0) if remove_dim else x
+    #if x.stride(0) == aligned_m * n and x.stride(1) == 1 and x.stride(2) == aligned_m:
+    #    return x.squeeze(0) if remove_dim else x
 
     # Normal layout requires transposing
-    aligned_x = torch.transpose(torch.empty((b, n, aligned_m), device=x.device, dtype=x.dtype), 1, 2)
+    #aligned_x = paddle.transpose(paddle.empty((b, n, aligned_m), dtype=x.dtype), 1, 2)
+    aligned_x = paddle.transpose(paddle.empty((b, n, aligned_m), dtype=x.dtype), perm=[0, 2, 1])
     aligned_x[:, :m, :] = x
     return aligned_x.squeeze(0) if remove_dim else aligned_x
+

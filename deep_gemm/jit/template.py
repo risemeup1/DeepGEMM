@@ -1,7 +1,7 @@
 import copy
 import ctypes
 import os
-import torch
+import paddle
 
 from typing import Any, Iterable, Dict, Tuple
 
@@ -9,17 +9,17 @@ from typing import Any, Iterable, Dict, Tuple
 # Name map for Python `eval`
 typename_map: Dict[Any, str] = {
     **{t: t.__name__ for t in (bool, int, float)},
-    torch.int: 'torch.int',
-    torch.float: 'torch.float',
-    torch.bfloat16: 'torch.bfloat16',
-    torch.float8_e4m3fn: 'torch.float8_e4m3fn',
-    torch.cuda.Stream: 'torch.cuda.Stream',
+    paddle.int32: 'paddle.int32',
+    paddle.float32: 'paddle.float32',
+    paddle.bfloat16: 'paddle.bfloat16',
+    paddle.float8_e4m3fn: 'paddle.float8_e4m3fn',
+    paddle.device.cuda.Stream: 'paddle.device.cuda.Stream',
 }
 
 # `ctype` map for Python casting
 ctype_map: Dict[Any, Any] = {
     **{t: getattr(ctypes, f'c_{t.__name__}') for t in (bool, int, float)},
-    **{t: ctypes.c_void_p for t in (torch.int, torch.float, torch.bfloat16, torch.float8_e4m3fn, torch.cuda.Stream)},
+    **{t: ctypes.c_void_p for t in (paddle.int32, paddle.float32, paddle.bfloat16, paddle.float8_e4m3fn, paddle.device.cuda.Stream)},
 }
 
 
@@ -28,19 +28,19 @@ genc_map = {
     bool: ('bool', 'bool'),
     int: ('int', 'int'),
     float: ('float', 'float'),
-    torch.int: ('void*', 'int*'),
-    torch.float: ('void*', 'float*'),
-    torch.bfloat16: ('void*', '__nv_bfloat16*'),
-    torch.float8_e4m3fn: ('void*', '__nv_fp8_e4m3*'),
-    torch.cuda.Stream: ('void*', 'cudaStream_t'),
+    paddle.int32: ('void*', 'int*'),
+    paddle.float32: ('void*', 'float*'),
+    paddle.bfloat16: ('void*', '__nv_bfloat16*'),
+    paddle.float8_e4m3fn: ('void*', '__nv_fp8_e4m3*'),
+    paddle.device.cuda.Stream: ('void*', 'cudaStream_t'),
 }
 
 
 def map_ctype(value: Any) -> Any:
-    ctype = ctype_map[value.dtype if isinstance(value, torch.Tensor) else type(value)]
-    if isinstance(value, torch.Tensor):
+    ctype = ctype_map[value.dtype if isinstance(value, paddle.Tensor) else type(value)]
+    if isinstance(value, paddle.Tensor):
         return ctype(value.data_ptr())
-    if isinstance(value, torch.cuda.Stream):
+    if isinstance(value, paddle.device.cuda.Stream):
         return ctype(value.cuda_stream)
     return ctype(value)
 
@@ -91,3 +91,4 @@ def generate(includes: Iterable[str], arg_defs: Iterable[Tuple], body: str) -> s
         print(f'Generated code:\n{code}')
 
     return code
+

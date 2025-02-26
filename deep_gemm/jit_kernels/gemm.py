@@ -1,5 +1,6 @@
-import torch
+import paddle
 from typing import Tuple
+from paddle import Tensor
 
 from .tuner import jit_tuner
 from .utils import get_num_sms, cell_div, get_col_major_tma_aligned_tensor, get_m_alignment_for_contiguous_layout
@@ -104,9 +105,9 @@ def get_best_configs(m: int, n: int, k: int, num_groups: int, num_sms: int,
     return best_block_m, best_block_n, best_num_stages, best_num_tma_multicast, best_smem_size
 
 
-def gemm_fp8_fp8_bf16_nt(lhs: Tuple[torch.Tensor, torch.Tensor],
-                         rhs: Tuple[torch.Tensor, torch.Tensor],
-                         out: torch.Tensor) -> None:
+def gemm_fp8_fp8_bf16_nt(lhs: Tuple[Tensor, Tensor],
+                         rhs: Tuple[Tensor, Tensor],
+                         out: Tensor) -> None:
     """
     Do a normal GEMM with FP8 inputs and BF16 output, with 1x128 LHS scaling and 128x128 RHS scaling.
     LHS, RHS, RHS scaling factors, and output tensors must be in contiguous format.
@@ -115,9 +116,9 @@ def gemm_fp8_fp8_bf16_nt(lhs: Tuple[torch.Tensor, torch.Tensor],
         this function will do a transposing with a set of slow PyTorch operations.
 
     Arguments:
-        lhs: the first element is an FP8 tensor (typed `torch.float8_e4m3fn`) of shape `[m, k]`,
+        lhs: the first element is an FP8 tensor (typed `paddle.float8_e4m3fn`) of shape `[m, k]`,
              the second element is an FP32 1x128 scaling tensor for LHS of shape `[m, ⌈k / 128⌉]`.
-        rhs: the first element is an FP8 tensor (typed `torch.float8_e4m3fn`) of shape `[n, k]`.
+        rhs: the first element is an FP8 tensor (typed `paddle.float8_e4m3fn`) of shape `[n, k]`.
              the second element is an FP32 128x128 scaling tensor for RHS of shape `[⌈n / 128⌉, ⌈k / 128⌉]`.
         out: the BF16 output tensor of shape `[m, n]`, representing the result.
     """
@@ -129,14 +130,14 @@ def gemm_fp8_fp8_bf16_nt(lhs: Tuple[torch.Tensor, torch.Tensor],
 
     assert n % 64 == 0 and k % 128 == 0
 
-    # Type and shape checks
+    # # Type and shape checks
     assert m == m_ and n == n_ and k == k_
     assert n > 0 and k > 0
-    assert lhs_scales.shape == (m, (k + 127) // 128)
-    assert rhs_scales.shape == ((n + 127) // 128, (k + 127) // 128)
-    assert lhs.dtype == torch.float8_e4m3fn and lhs_scales.dtype == torch.float32
-    assert rhs.dtype == torch.float8_e4m3fn and rhs_scales.dtype == torch.float32
-    assert out.dtype == torch.bfloat16
+    assert lhs_scales.shape == [m, (k + 127) // 128]
+    assert rhs_scales.shape == [(n + 127) // 128, (k + 127) // 128]
+    assert lhs.dtype == paddle.float8_e4m3fn and lhs_scales.dtype == paddle.float32
+    assert rhs.dtype == paddle.float8_e4m3fn and rhs_scales.dtype == paddle.float32
+    assert out.dtype == paddle.bfloat16
     assert lhs.is_contiguous() and rhs.is_contiguous() and out.is_contiguous()
 
     # LHS scales must be transposed for TMA load, but not for RHS scales
@@ -152,20 +153,21 @@ def gemm_fp8_fp8_bf16_nt(lhs: Tuple[torch.Tensor, torch.Tensor],
     global includes, template
     num_sms = get_num_sms()
     block_m, block_n, num_stages, num_tma_multicast, smem_size = get_best_configs(m, n, k, 1, num_sms)
-    args = (lhs, lhs_scales, rhs, rhs_scales, out, m, torch.cuda.current_stream(), num_sms, smem_size)
+    args = (lhs, lhs_scales, rhs, rhs_scales, out, m, paddle.device.cuda.current_stream(), num_sms, smem_size)
     runtime = jit_tuner.compile_and_tune(
         name='gemm_fp8_fp8_bf16_nt',
         keys={'N': n, 'K': k, 'BLOCK_M': block_m, 'BLOCK_N': block_n,
               'NUM_STAGES': num_stages, 'NUM_TMA_MULTICAST': num_tma_multicast},
         space=(),
         includes=includes,
-        arg_defs=(('lhs', torch.float8_e4m3fn), ('lhs_scales', torch.float),
-                  ('rhs', torch.float8_e4m3fn), ('rhs_scales', torch.float),
-                  ('out', torch.bfloat16), ('m', int),
-                  ('stream', torch.cuda.Stream), ('num_sms', int), ('smem_size', int)),
+        arg_defs=(('lhs', paddle.float8_e4m3fn), ('lhs_scales', paddle.float32),
+                  ('rhs', paddle.float8_e4m3fn), ('rhs_scales', paddle.float32),
+                  ('out', paddle.bfloat16), ('m', int),
+                  ('stream', paddle.device.cuda.Stream), ('num_sms', int), ('smem_size', int)),
         template=template,
         args=args
     )
 
     # Run the kernel
     runtime(*args)
+

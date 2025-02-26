@@ -1,14 +1,14 @@
 import os
 import sys
-import torch
-import torch.distributed as dist
+import paddle
+import paddle.distributed as dist
 
 
 def bench(fn, num_warmups: int = 5, num_tests: int = 10,
           high_precision: bool = False):
     # Flush L2 cache with 256 MB data
-    torch.cuda.synchronize()
-    cache = torch.empty(int(256e6 // 4), dtype=torch.int, device='cuda')
+    paddle.device.cuda.synchronize()
+    cache = paddle.empty(int(256e6 // 4), dtype=paddle.int32)
     cache.zero_()
 
     # Warmup
@@ -17,18 +17,18 @@ def bench(fn, num_warmups: int = 5, num_tests: int = 10,
 
     # Add a large kernel to eliminate the CPU launch overhead
     if high_precision:
-        x = torch.randn((8192, 8192), dtype=torch.float, device='cuda')
-        y = torch.randn((8192, 8192), dtype=torch.float, device='cuda')
+        x = paddle.randn((8192, 8192), dtype=paddle.float32)
+        y = paddle.randn((8192, 8192), dtype=paddle.float32)
         x @ y
 
     # Testing
-    start_event = torch.cuda.Event(enable_timing=True)
-    end_event = torch.cuda.Event(enable_timing=True)
+    start_event = paddle.device.cuda.Event(enable_timing=True)
+    end_event = paddle.device.cuda.Event(enable_timing=True)
     start_event.record()
     for i in range(num_tests):
         fn()
     end_event.record()
-    torch.cuda.synchronize()
+    paddle.device.cuda.synchronize()
 
     return start_event.elapsed_time(end_event) / num_tests
 
@@ -138,7 +138,7 @@ def bench_kineto(fn, kernel_names, num_tests: int = 30, suppress_kineto_output: 
 
 
 def calc_diff(x, y):
-    x, y = x.double(), y.double()
+    x, y = x.astype(paddle.float64), y.astype(paddle.float64)
     denominator = (x * x + y * y).sum()
     sim = 2 * (x * y).sum() / denominator
     return 1 - sim
@@ -152,3 +152,4 @@ def count_bytes(tensors):
         else:
             total += t.numel() * t.element_size()
     return total
+

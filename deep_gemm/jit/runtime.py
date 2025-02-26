@@ -1,6 +1,6 @@
 import ctypes
 import os
-import torch
+import paddle
 from typing import Optional
 
 from .template import map_ctype
@@ -35,7 +35,7 @@ class Runtime:
         assert len(args) == len(self.args), f'Expected {len(self.args)} arguments, got {len(args)}'
         cargs = []
         for arg, (name, dtype) in zip(args, self.args):
-            if isinstance(arg, torch.Tensor):
+            if isinstance(arg, paddle.Tensor):
                 assert arg.dtype == dtype, f'Expected tensor dtype `{dtype}` for `{name}`, got `{arg.dtype}`'
             else:
                 assert isinstance(arg, dtype), f'Expected built-in type `{dtype}` for `{name}`, got `{type(arg)}`'
@@ -64,3 +64,4 @@ class RuntimeCache:
 
     def __setitem__(self, path, runtime) -> None:
         self.cache[path] = runtime
+

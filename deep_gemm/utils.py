@@ -1,7 +1,6 @@
 import os
 import sys
 import paddle
-import paddle.distributed as dist
 
 
 def bench(fn, num_warmups: int = 5, num_tests: int = 10,

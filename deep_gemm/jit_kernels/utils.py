@@ -11,7 +11,7 @@ def set_num_sms(num_sms: int) -> None:
         num_sms: the desired maximum SM count for all GEMM kernels to use.
     """
     global _num_sms
-    assert 0 < num_sms <= torch.cuda.get_device_properties(device='cuda').multi_processor_count
+    assert 0 < num_sms <= paddle.device.cuda.get_device_properties().multi_processor_count
     _num_sms = num_sms
 
 

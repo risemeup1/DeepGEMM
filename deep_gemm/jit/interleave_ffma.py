@@ -3,11 +3,30 @@ import mmap
 import os
 import re
 import subprocess
-from torch.utils.cpp_extension import CUDA_HOME
 
+def get_cuda_home():
+    cuda_home = os.environ.get('CUDA_HOME') or os.environ.get('CUDA_PATH')
+    if cuda_home:
+        return cuda_home
+
+    try:
+        which_cmd = 'which nvcc'
+
+        nvcc_path = os.popen(which_cmd).read().strip()
+        if nvcc_path:
+            return os.path.dirname(os.path.dirname(nvcc_path))
+    except Exception:
+        pass
+
+    return None
 
 def run_cuobjdump(file_path):
-    command = [f'{CUDA_HOME}/bin/cuobjdump', '-sass', file_path]
+    cuda_home = get_cuda_home()
+    if cuda_home:
+        print(f"CUDA is installed at: {cuda_home}")
+    else:
+        print("CUDA_HOME not found. CUDA might not be installed.")
+    command = [f'{cuda_home}/bin/cuobjdump', '-sass', file_path]
     result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     assert result.returncode == 0
     return result.stdout

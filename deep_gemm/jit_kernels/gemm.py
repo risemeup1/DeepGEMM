@@ -1,10 +1,11 @@
 import paddle
 from typing import Tuple
 from paddle import Tensor
+import functools
 
 from .tuner import jit_tuner
 from .utils import get_num_sms, cell_div, get_col_major_tma_aligned_tensor, get_m_alignment_for_contiguous_layout
-
+import time
 # C++ code templates
 includes = ('"deep_gemm/fp8_gemm.cuh"', )
 template = """
@@ -55,7 +56,7 @@ def get_smem_size(num_stages: int, k: int, block_m: int, block_n: int, block_k: 
     smem_size += smem_barrier
     return smem_size
 
-
+@functools.lru_cache()
 def get_best_configs(m: int, n: int, k: int, num_groups: int, num_sms: int,
                      is_grouped_contiguous: bool = False) -> Tuple[int, int, int, int, int]:
     if not is_grouped_contiguous:
@@ -169,5 +170,7 @@ def gemm_fp8_fp8_bf16_nt(lhs: Tuple[Tensor, Tensor],
     )
 
     # Run the kernel
+    start=time.time()
     runtime(*args)
+    print("time taken:",f"{time.time()-start}")
 

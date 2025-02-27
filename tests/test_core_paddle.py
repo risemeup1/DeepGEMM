@@ -4,7 +4,7 @@ from paddle import Tensor
 from typing import Tuple
 
 import deep_gemm
-from deep_gemm import bench_kineto, calc_diff, cell_div, get_col_major_tma_aligned_tensor
+from deep_gemm import calc_diff, cell_div, get_col_major_tma_aligned_tensor
 
 
 def per_token_cast_to_fp8(x: Tensor) -> Tuple[Tensor, Tensor]:

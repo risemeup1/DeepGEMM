@@ -8,4 +8,4 @@ from .jit_kernels import (
     get_col_major_tma_aligned_tensor,
     get_m_alignment_for_contiguous_layout
 )
-from .utils import bench, bench_kineto, calc_diff
+from .utils import bench, calc_diff

@@ -76,7 +76,7 @@ def get_tma_aligned_size(x: int, element_size: int) -> int:
 
 def get_col_major_tma_aligned_tensor(x: paddle.tensor) -> paddle.tensor:
     """
-    Returns TMA-aligned transposed format of the input tensor. `torch.transpose` will be called if necessary.
+    Returns TMA-aligned transposed format of the input tensor. `paddle.transpose` will be called if necessary.
     If the input tensor is already column-major layout and 16-byte aligned along the M axis
         (thus meets the requirement of LHS scaling tensor in DeepGEMM), this function will do nothing.
 
